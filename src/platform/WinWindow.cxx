@@ -44,8 +44,7 @@ WinWindow::WinWindow(const WinDisplay* _display, WinVisual* _visual) :
 {
   // make window
   hwnd = CreateWindow("BZFLAG", "bzflag",
-			WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_POPUP |
-			WS_BORDER | WS_CAPTION,
+			WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
 			0, 0, 640, 480, NULL, NULL,
 			display->getRep()->hInstance, NULL);
   if (hwnd == NULL) return;
@@ -177,7 +176,7 @@ void			WinWindow::setFullscreen(bool on)
 
     // window stuff
     DWORD style = GetWindowLong(hwnd, GWL_STYLE);
-    style |= (WS_BORDER | WS_CAPTION);
+    style |= (WS_OVERLAPPEDWINDOW);
     SetWindowLong(hwnd, GWL_STYLE, style);
 
     // size it

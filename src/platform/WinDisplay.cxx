@@ -93,9 +93,26 @@ LONG WINAPI		WinDisplay::Rep::windowProc(HWND hwnd, UINT msg,
 				WPARAM wparam, LPARAM lparam)
 {
   switch(msg) {
+    case WM_CLOSE: {
+      PostQuitMessage(0);
+      return 0;
+    }
+
     case WM_DESTROY: {
       WinWindow* window = WinWindow::lookupWindow(hwnd);
       if (window && window->getHandle() == hwnd) window->onDestroy();
+      break;
+    }
+
+    case WM_SIZE: { // draw at end of resize
+      WinWindow* window = WinWindow::lookupWindow(hwnd);
+      if (window && window->getHandle() == hwnd) {
+        int width, height;
+        window->getSize(width, height);
+        window->setSize(width, height);
+        window->callResizeCallbacks();
+        return 0;
+      }
       break;
     }
 
@@ -116,23 +133,6 @@ LONG WINAPI		WinDisplay::Rep::windowProc(HWND hwnd, UINT msg,
       }
       return 0;
 
-    case WM_ACTIVATE: {
-		if (BZDB.isTrue("Win32NoMin"))
-			break;
-      WinWindow* window = WinWindow::lookupWindow(hwnd);
-      if (window) {
-	if (LOWORD(wparam) == WA_INACTIVE) {
-	  if (window->deactivate())
-	    PostMessage(hwnd, WM_APP + 1, (WPARAM)0, (LPARAM)0);
-	}
-	else {
-	  if (window->activate())
-	    PostMessage(hwnd, WM_APP + 0, (WPARAM)0, (LPARAM)0);
-	}
-      }
-      break;
-    }
-
     case WM_DISPLAYCHANGE: {
       WinWindow* window = WinWindow::lookupWindow(hwnd);
       if (window && window->getHandle() == hwnd) {
@@ -149,8 +149,20 @@ LONG WINAPI		WinDisplay::Rep::windowProc(HWND hwnd, UINT msg,
 	case SC_SCREENSAVE:
 	case SC_MONITORPOWER:
 	  return 0;
-      }
+
+        case SC_MINIMIZE: {
+          if (WinWindow::lookupWindow(hwnd)->deactivate())
+            PostMessage(hwnd, WM_APP + 1, (WPARAM)0, (LPARAM)0);
+          return 0;
+        }
+
+        case SC_RESTORE: {
+          if (WinWindow::lookupWindow(hwnd)->activate())
+            PostMessage(hwnd, WM_APP + 0, (WPARAM)0, (LPARAM)0);
+          return 0;
+        }
       break;
+      }
   }
 
   return DefWindowProc(hwnd, msg, wparam, lparam);
@@ -230,11 +242,7 @@ bool WinDisplay::windowsEventToBZFEvent ( MSG &msg, BzfEvent& event ) const
 {
 	event.window = WinWindow::lookupWindow(msg.hwnd);
 	switch (msg.message) {
-	case WM_CLOSE:
 	case WM_QUIT:
-	case WM_SYSCOMMAND:
-		if (msg.wParam != SC_CLOSE)
-			break;
 		event.type = BzfEvent::Quit;
 		break;
 

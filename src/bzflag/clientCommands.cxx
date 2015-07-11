@@ -254,7 +254,6 @@ static std::string cmdIconify(const std::string&,
   if (args.size() != 0)
     return "usage: iconify";
 
-  if (!BZDB.isTrue("Win32NoMin"))
 	 mainWindow->iconify();
   return std::string();
 }
