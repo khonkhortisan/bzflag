@@ -171,12 +171,10 @@ static const float FarPlaneScale = 1.5f; // gets multiplied by BZDB_WORLDSIZE
 static const float FarPlaneDefault = FarPlaneScale * 800.0f;
 static const float FarDeepPlaneScale = 10.0f;
 static const float FarDeepPlaneDefault = FarPlaneDefault * FarDeepPlaneScale;
-static const float NearPlaneNormal = 1.0f;
-static const float NearPlaneClose = 0.25f; // for drawing in the cockpit
 static bool FarPlaneCull = false;
 static float FarPlane = FarPlaneDefault;
 static float FarDeepPlane = FarDeepPlaneDefault;
-static float NearPlane = NearPlaneNormal;
+static float NearPlaneDefault = 0.01f; // a small non-zero number
 
 static bool leftMouseButton   = false;
 static bool rightMouseButton  = false;
@@ -4917,7 +4915,7 @@ void		leaveGame()
   targetPoint[1] = eyePoint[1] + 0.0f;
   targetPoint[2] = eyePoint[2] + 0.0f;
   sceneRenderer->getViewFrustum().setProjection((float)(60.0 * M_PI / 180.0),
-						NearPlaneNormal,
+						NearPlaneDefault,
 						FarPlaneDefault,
 						FarDeepPlaneDefault,
 						mainWindow->getWidth(),
@@ -5306,38 +5304,6 @@ static bool trackPlayerShot(Player* target,
   return false;
 }
 
-static void setupNearPlane()
-{
-  NearPlane = NearPlaneNormal;
-
-  const bool showTreads = BZDB.isTrue("showTreads");
-  if (!showTreads || !myTank) {
-    return;
-  }
-
-  const Player* tank = myTank;
-  if (ROAM.isRoaming()) {
-    if (ROAM.getMode() != Roaming::roamViewFP) {
-      return;
-    }
-    if (!devDriving) {
-      tank = ROAM.getTargetTank();
-    }
-  }
-  if (tank == NULL) {
-    return;
-  }
-
-  const float halfLength = 0.5f * BZDBCache::tankLength;
-  const float length = tank->getDimensions()[1];
-  if (fabsf(length - halfLength) > 0.1f) {
-    NearPlane = NearPlaneClose;
-  }
-
-  return;
-}
-
-
 static void setupFarPlane()
 {
   FarPlane = FarPlaneScale * BZDBCache::worldSize;
@@ -5556,16 +5522,12 @@ void drawFrame(const float dt)
       moveSoundReceiver(eyePoint[0], eyePoint[1], eyePoint[2], 0.0, false);
     }
 
-    // only use a close plane for drawing in the
-    // cockpit, and even then only for odd sized tanks
-    setupNearPlane();
-
     // based on fog and _cullDist
     setupFarPlane();
 
     ViewFrustum& viewFrustum = sceneRenderer->getViewFrustum();
 
-    viewFrustum.setProjection(fov, NearPlane, FarPlane, FarDeepPlane,
+    viewFrustum.setProjection(fov, NearPlaneDefault, FarPlane, FarDeepPlane,
 			      mainWindow->getWidth(),
 			      mainWindow->getHeight(),
 			      mainWindow->getViewHeight());
@@ -5659,7 +5621,7 @@ void drawFrame(const float dt)
     // and no longer exploding, or when we are in a building.
     bool insideDim = false;
     if (myTank) {
-      const float hnp = 0.5f * NearPlane; // half near plane distance
+      const float hnp = 0.5f * NearPlaneDefault; // half near plane distance
       const float* eye = viewFrustum.getEye();
       const float* dir = viewFrustum.getDirection();
       float clipPos[3];
@@ -6951,7 +6913,7 @@ static void		findFastConfiguration()
   static const GLfloat eyePoint[3] = { 0.0f, 0.0f, muzzleHeight };
   static const GLfloat targetPoint[3] = { 0.0f, 10.0f, muzzleHeight };
   sceneRenderer->getViewFrustum().setProjection((float)(45.0 * M_PI / 180.0),
-						NearPlaneNormal,
+						NearPlaneDefault,
 						FarPlaneDefault,
 						FarDeepPlaneDefault,
 						mainWindow->getWidth(),
