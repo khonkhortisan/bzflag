@@ -2822,9 +2822,42 @@ static void		handleServerMessage(bool human, uint16_t code,
 
       std::string text = BundleMgr::getCurrentBundle()->getLocalString(origText);
 
-	  if (srcPlayer != myTank && strstr((const char*)msg, "FairCheats: ") != NULL) {
-        OutputDebugString((const char *)msg);
-		break;
+      std::stringstream msgwords((const char*) msg);
+      std::string fcword;
+	  msgwords >> fcword;
+	  if (fcword == "FairCheats:") {
+        bool amEnabling = true;
+        while (msgwords >> fcword) {
+          if (fcword == "clientquery") {
+            if (srcPlayer != myTank) {
+              bool Iamclientquerysender = false; //FIXME: CommandsImplementation.cxx
+			  OutputDebugString("pm my features\n");
+			}
+		  } else if (fcword == "Enabling:") {
+			  OutputDebugString("amEnabling\n");
+			  amEnabling = true;
+		  } else if (fcword == "Disabling:") {
+			  OutputDebugString("amDisabling\n");
+			  amEnabling = false;
+		  } else if (fcword.back() == ':') {
+		   OutputDebugString("username:\n");
+		   std::string fcusername=fcword.substr(0,fcword.size()-1);
+		   //track fcusername's features
+		  } else {
+			OutputDebugString("Feature: ");
+			OutputDebugString(fcword.c_str());
+			OutputDebugString("\n");
+			//track srcPlayer's features
+		  }
+        }
+		//if ends in :
+		//  if Enabling:
+		//    set mode enabling
+		//  if Disabling:
+		//    set mode disabling
+		//  else is username:
+		//else is Feature
+        break;
 	  }
 
       if (toAll || toAdmin || srcPlayer == myTank  || dstPlayer == myTank ||

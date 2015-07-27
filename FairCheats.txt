@@ -35,10 +35,10 @@ At the start, FairCheats is completely disabled. Do not mimic any messages it se
 
 - One player types "/fc", which makes them say "FairCheats: clientquery" in public chat. This is visible to everyone, whether they are on this branch or not. FIXME: I don't have a way to hide that message yet to make it less spammy - if it was invisible, synchronization could occur automatically. This command only works once, from then on it tracks clients by itself.
 - Any other player that has the same client will automatically pm "FairCheats: Feature Feature2" with a space-separated list of features in response to the clientquery player, to say both that they have a similar client, and to list what features it supports. FIXME: This would become a problem if the list became longer than the maximum message length.
-- When the clientquery player receives the response, it wil pm "FairCheats: username: Feature Feature2" both to each known FairCheats client notifying it of the responding player, and to the responding player notifying it of each known FairCheats client.
+- When the clientquery player receives the response, it will reciprocate "FairCheats: Feature Feature2" to say which feature it has. It will also pm "FairCheats: username: Feature Feature2" both to each known FairCheats client notifying it of the responding player, and to the responding player notifying it of each known FairCheats client.
 - The clientquery player stops being the message hub.
 
-At this point, each FairCheats client is aware of each other client, having used (n-1)²+1 total messages to synchronize, where n is the number of non-observer FairCheats clients on a single server.
+At this point, each FairCheats client is aware of each other client, having used (n-1)²+n total messages to synchronize, where n is the number of non-observer FairCheats clients on a single server and one of the messages is in public chat.
 
 The spokesperson player is the one who is first alphabetically. Whenever messages need to be sent in public without a specific player initiating them, this is the one who says them. They are no more affiliated with this branch than the others using it, and are not the leader.
 

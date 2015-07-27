@@ -829,7 +829,7 @@ bool FairCheatsCommand::operator() (const char* commandLine)
   strncpy(messageBuffer, "FairCheats: clientquery", MessageLen);
   nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
   serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
-
+  bool Iamclientquerysender = false; //FIXME: connect this bool to the one in playing.cxx through FairCheats.h/.cxx
   return true;
 }
 
