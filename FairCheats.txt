@@ -1,0 +1,57 @@
+﻿FairCheats specification:
+This branch contains a collection of enhancement modifications to BZFlag which would be unfair to play against without using them (Cheats), and a peer-to-peer synchronization system that only allows enabling them when all players' clients on the current server support it (Fairly)
+
+Do not attempt to remove the fairness from this branch. Beware, admins will notice and take action.
+
+~~Currently-supported~~ features:
+- ExactShotLength (future feature):
+	The end of the leading shot line will be the exact spot the shot will disappear, unless the shot ricochets, in which case the leading shot line will end at the wall.
+- RicochetsOnRadar (future feature):
+	The leading shot line will bend through ricochets, but still be the usual length.
+- ExactShotLength + RicochetsOnRadar (future feature):
+	The end of the leading shot line will be the exact spot the shot will disappear, bending through ricochets if need be.
+- ShotsLethalAfterRicochet (future feature):
+	A fun training mode, you can shoot through a tank and they only die if the shot bounces back and hits them.
+- CenteredRadar (future feature):
+	The radar is exactly the same size but in the center of the screen. This removes the time required to glance back and forth between the center of the screen and the center of the radar.
+- FullscreenRadar (future feature):
+	CenteredRadar that fills the entire screen. This only existed in one release, but was then removed.
+Enabling CenteredRadar or FullscreenRadar will silently disable the other of the two.
+- Wings (future feature):
+	In the same way that jumping and ricochet can either be flags or server settings, so that you can jump and ricochet while holding a flag, this allows you to fly while still holding a flag. Interactions with other flags: FIXME
+- Some kind of ForegroundRadarTransparency (future feature):
+	Radar already has background transparency, but not foreground transparency. An out-the-window tank can hide under an on-the-radar building. FIXME: Should this be adjustable?
+- Custom flags?:
+	These would be flags that do things not supported by the server plugin api. The custom flag would have to exist and be held by the tank. This may be paired with a server plugin for dual functionality.
+- Side jumping?:
+	Two buttons (force being assigned?) to jump a half tank? up, one tank? sideways, in under one? second.
+
+This branch will not include changes that could be toggled with a simple server setting, such as radar on no-radar maps, tiny tank, or flying on a no-flying map.
+If a feature is added to the official build (such as flying as a server setting or centered radar), it will be removed from here because of the above rule.
+
+How this works:
+
+At the start, FairCheats is completely disabled. Do not mimic any messages it sends if you don't have the FairCheats client, as this can make it unfair for you. If you accidentally did, rejoining and spawning will reset it.
+
+- One player types "/fc", which makes them say "FairCheats: clientquery" in public chat. This is visible to everyone, whether they are on this branch or not. FIXME: I don't have a way to hide that message yet to make it less spammy - if it was invisible, synchronization could occur automatically. This command only works once, from then on it tracks clients by itself.
+- Any other player that has the same client will automatically pm "FairCheats: Feature Feature2" with a space-separated list of features in response to the clientquery player, to say both that they have a similar client, and to list what features it supports. FIXME: This would become a problem if the list became longer than the maximum message length.
+- When the clientquery player receives the response, it wil pm "FairCheats: username: Feature Feature2" both to each known FairCheats client notifying it of the responding player, and to the responding player notifying it of each known FairCheats client.
+- The clientquery player stops being the message hub.
+
+At this point, each FairCheats client is aware of each other client, having used (n-1)²+1 total messages to synchronize, where n is the number of non-observer FairCheats clients on a single server.
+
+The spokesperson player is the one who is first alphabetically. Whenever messages need to be sent in public without a specific player initiating them, this is the one who says them. They are no more affiliated with this branch than the others using it, and are not the leader.
+
+If all players have identified, the spokesperson player will send over public chat "FairCheats: Synchronized." If some players are missing features, it will add " Partially supported features: Feature Feature2" to the end of the message. Other clients don't listen to this message.
+
+Typing /fc after a failed synchronization (even if someone else ran the clientquery) will locally say "FairCheats: Synchronization failed for: username username2"
+Typing /fc after a successful synchronization will locally list the available features and their descriptions.
+Typing "/fc Feature Feature2 Feature3 Feature4" will (if not synchronized, instead attempt synchronization, otherwise) send "FairCheats: Enabling: Feature Feature3 Disabling: Feature2 Feature4" in public chat, depending on which features are currently enabled. Each client will enable/disable the feature(s). 
+
+To keep everything updated:
+- If you are the first person joining, you won't send clientquery/synchronized/partially-supported messages.
+- If a player leaves (even if just rejoining), each client internally removes their entry as a known client.
+- If a player joins and a FairCheat is currently activated (not just where the clients are aware of each other) they have a grace period to identify themselves between when they join and when they spawn.
+  - On new player join while a FairCheat is activated: The spokesperson player sends a new "FairCheats: clientquery".
+  - If they identify themselves and support the currently-activated features, those features will be activated immediately. FIXME: write about the messages used here.
+  - If they spawn without supporting a currently-activated feature (their FairCheats client is old, or they're not using one), the spokesperson player will say in public chat "FairCheats: Disabling: Feature Feature2: Not supported by username", listing each currently-activated feature they don't support.
