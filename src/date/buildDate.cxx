@@ -141,6 +141,7 @@ const char*		getAppVersion()
 #endif
 #endif
     appVersion = appVersionStream.str();
+	appVersion = (appVersion).append("-FairCheats");
   }
   return appVersion.c_str();
 }
