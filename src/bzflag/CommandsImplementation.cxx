@@ -139,6 +139,12 @@ class DebugLevelCommand : LocalCommand {
     bool operator() (const char *commandLine);
 };
 
+class FairCheatsCommand : LocalCommand {
+  public:
+    FairCheatsCommand();
+	bool operator() (const char *commandLine);
+};
+
 
 // class instantiations
 static CommandList	  commandList;
@@ -158,6 +164,7 @@ static SaveMsgsCommand	  saveMsgsCommand;
 static SaveWorldCommand   saveWorldCommand;
 static ForceRadarCommand  forceRadarCommand;
 static DebugLevelCommand  DebugLevelCommand;
+static FairCheatsCommand  FairCheatsCommand;
 
 
 // class constructors
@@ -178,6 +185,7 @@ SetCommand::SetCommand()			: LocalCommand("/set") {}
 SilenceCommand::SilenceCommand()		: LocalCommand("/silence") {}
 UnsilenceCommand::UnsilenceCommand()		: LocalCommand("/unsilence") {}
 ClientQueryCommand::ClientQueryCommand()	: LocalCommand("CLIENTQUERY") {}
+FairCheatsCommand::FairCheatsCommand()		: LocalCommand("/fc") {}
 
 
 // the meat of the matter
@@ -811,6 +819,16 @@ bool DebugLevelCommand::operator() (const char* cmdLine)
   char buf[128];
   snprintf(buf, sizeof(buf), "debug level set to %i", debugLevel);
   addMessage(NULL, buf);
+
+  return true;
+}
+
+bool FairCheatsCommand::operator() (const char* commandLine)
+{
+  char messageBuffer[MessageLen];
+  strncpy(messageBuffer, "FairCheats: clientquery", MessageLen);
+  nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
+  serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
 
   return true;
 }
