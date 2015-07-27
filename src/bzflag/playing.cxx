@@ -2822,6 +2822,11 @@ static void		handleServerMessage(bool human, uint16_t code,
 
       std::string text = BundleMgr::getCurrentBundle()->getLocalString(origText);
 
+	  if (srcPlayer != myTank && strstr((const char*)msg, "FairCheats: ") != NULL) {
+        OutputDebugString((const char *)msg);
+		break;
+	  }
+
       if (toAll || toAdmin || srcPlayer == myTank  || dstPlayer == myTank ||
 	  dstTeam == myTank->getTeam()) {
 	// message is for me
