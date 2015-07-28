@@ -1774,7 +1774,6 @@ static void handleNearFlag (const void *msg, uint16_t)
 static void		handleServerMessage(bool human, uint16_t code,
 					    uint16_t len, const void* msg)
 {
-  std::vector<std::string> args;
   bool checkScores = false;
   static WordFilter *wordfilter = (WordFilter *)BZDB.getPointer("filter");
 
@@ -3096,7 +3095,6 @@ static void		handleServerMessage(bool human, uint16_t code,
 	  break;
 	}
 
-	std::string name(tank->getCallSign());
 	std::string message("joining as ");
 	if (tank->getTeam() == ObserverTeam) {
 	  message += "an observer";
