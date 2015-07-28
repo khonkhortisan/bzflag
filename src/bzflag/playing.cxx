@@ -2824,41 +2824,69 @@ static void		handleServerMessage(bool human, uint16_t code,
 
       std::stringstream msgwords((const char*) msg);
       std::string fcword;
-	  msgwords >> fcword;
-	  if (fcword == "FairCheats:") {
-        bool amEnabling = true;
-        while (msgwords >> fcword) {
-          if (fcword == "clientquery") {
+      msgwords >> fcword;
+      if (fcword == "FairCheats:") {
+        enum fcnextwordprocessmode { NONE, SUPPORTING, PROXYSUPPORTING, ENABLING, DISABLING } fcmode;
+        std::string fcusername;
+        bool errored = false;
+        while (msgwords >> fcword && !errored) {
+          /*~~*/ if (fcword == "Clientquery.") {
             if (srcPlayer != myTank) {
-              bool Iamclientquerysender = false; //FIXME: CommandsImplementation.cxx
-			  OutputDebugString("pm my features\n");
-			}
-		  } else if (fcword == "Enabling:") {
-			  OutputDebugString("amEnabling\n");
-			  amEnabling = true;
-		  } else if (fcword == "Disabling:") {
-			  OutputDebugString("amDisabling\n");
-			  amEnabling = false;
-		  } else if (fcword.back() == ':') {
-		   OutputDebugString("username:\n");
-		   std::string fcusername=fcword.substr(0,fcword.size()-1);
-		   //track fcusername's features
-		  } else {
-			OutputDebugString("Feature: ");
-			OutputDebugString(fcword.c_str());
-			OutputDebugString("\n");
-			//track srcPlayer's features
-		  }
+              std::string localFeatures = "CenteredRadar Feature2"; //FIXME: FairCheats.h variable
+
+              std::stringstream composemessage;
+              composemessage << "/msg " << srcPlayer->getCallSign() << " FairCheats: Supports: " << localFeatures;
+              char messageBuffer[MessageLen];
+              strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
+              nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
+              serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
+            }
+          } else if (fcword == "Supports:") {
+            fcmode = SUPPORTING;
+            fcusername = srcPlayer->getCallSign();
+          } else if (fcword.back() == ':') {
+            fcmode = PROXYSUPPORTING;
+            fcusername=fcword.substr(0,fcword.size()-1);
+          } else if (fcword == "Enabling:") {
+            fcmode = ENABLING;
+          } else if (fcword == "Disabling:") {
+            fcmode = DISABLING;
+          } else if (fcword == "Reset.") {
+            // pretend nothing happened
+            OutputDebugString("FIXME: Reset synchronization and features");
+            break;
+          } else if (fcword == "Error:") {
+            // From default case below, ignore.
+            break;
+          } else {
+            OutputDebugString("Feature: ");
+            OutputDebugString(fcword.c_str());
+            OutputDebugString("\n");
+            switch (fcmode) {
+              case SUPPORTING:
+              case PROXYSUPPORTING: {
+                // track fcusername's features
+                break;
+              }
+              case ENABLING:
+              case DISABLING: {
+                // toggle feature's internal boolean directly
+                break;
+              }
+              default: {
+                char messageBuffer[MessageLen];
+                strncpy(messageBuffer, "FairCheats: Error: Feature without preceding mode.", MessageLen);
+                nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
+                serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
+                errored = true;
+                // Send a Reset now?
+                break;
+              }
+            }
+          }
         }
-		//if ends in :
-		//  if Enabling:
-		//    set mode enabling
-		//  if Disabling:
-		//    set mode disabling
-		//  else is username:
-		//else is Feature
         break;
-	  }
+      }
 
       if (toAll || toAdmin || srcPlayer == myTank  || dstPlayer == myTank ||
 	  dstTeam == myTank->getTeam()) {

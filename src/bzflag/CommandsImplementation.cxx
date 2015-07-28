@@ -826,7 +826,7 @@ bool DebugLevelCommand::operator() (const char* cmdLine)
 bool FairCheatsCommand::operator() (const char* commandLine)
 {
   char messageBuffer[MessageLen];
-  strncpy(messageBuffer, "FairCheats: clientquery", MessageLen);
+  strncpy(messageBuffer, "FairCheats: Clientquery.", MessageLen);
   nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
   serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
   bool Iamclientquerysender = false; //FIXME: connect this bool to the one in playing.cxx through FairCheats.h/.cxx
