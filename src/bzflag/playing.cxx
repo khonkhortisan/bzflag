@@ -94,6 +94,8 @@
 
 //#include "messages.h"
 
+//#include "FairCheats.h"
+
 static const float	FlagHelpDuration = 60.0f;
 StartupInfo	startupInfo;
 static MainMenu*	mainMenu;
@@ -2825,63 +2827,93 @@ static void		handleServerMessage(bool human, uint16_t code,
       std::stringstream msgwords((const char*) msg);
       std::string fcword;
       msgwords >> fcword;
-      if (fcword == "FairCheats:") {
+      if (fcword == "FairCheats:" && srcPlayer != myTank) {
         enum fcnextwordprocessmode { NONE, SUPPORTING, PROXYSUPPORTING, ENABLING, DISABLING } fcmode;
-        std::string fcusername;
-        bool errored = false;
-        while (msgwords >> fcword && !errored) {
-          /*~~*/ if (fcword == "Clientquery.") {
-            if (srcPlayer != myTank) {
-              std::string localFeatures = "CenteredRadar Feature2"; //FIXME: FairCheats.h variable
+        Player* mostrecentresponder;
+        bool doneprocessing = false;
+        while (msgwords >> fcword && !doneprocessing) { // for each word in message
+          if (fcword == "Clientquery.") {
+            //Iamlastclientquerysender = false;
+            std::string localFeatures = "CenteredRadar ExactShotLength RicochetsOnRadar"; //FIXME: FairCheats.h variable
 
+            std::stringstream composemessage;
+            composemessage << "/msg " << srcPlayer->getCallSign() << " FairCheats: Supports: " << localFeatures;
+            char messageBuffer[MessageLen];
+            strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
+            nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
+            serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
+            continue;
+          }
+          if (fcword == "Supports:") {
+            OutputDebugString("Support 1\n");
+            mostrecentresponder = srcPlayer;
+            mostrecentresponder->fcfeatures.clear();
+            fcmode = SUPPORTING;
+            OutputDebugString("Support 2\n");
+            continue;
+          }
+          if (fcword == "Enabling:") {
+            fcmode = ENABLING;
+            continue;
+          }
+          if (fcword == "Disabling:") {
+            fcmode = DISABLING;
+            continue;
+          }
+          if (fcword == "Reset.") {
+            // pretend nothing happened
+            OutputDebugString("FIXME: Reset synchronization and features");
+            break;
+          }
+          if (fcword == "Error:") {
+            // to still allow "FairCheats: " prefix
+            break;
+          }
+          if (fcword.back() == ':') {
+            mostrecentresponder=getPlayerByName(fcword.substr(0,fcword.size()-1).c_str());
+            // Support: crash
+            if (mostrecentresponder == NULL) { // && (wasPM || amSpokesperson()) // to remove mass duplicate spam at sender
               std::stringstream composemessage;
-              composemessage << "/msg " << srcPlayer->getCallSign() << " FairCheats: Supports: " << localFeatures;
+              composemessage << "FairCheats: Error: " << fcword.substr(0,fcword.size()-1).c_str() << " is not currently a valid player name.";
               char messageBuffer[MessageLen];
               strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
               nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
               serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
+              break;
             }
-          } else if (fcword == "Supports:") {
-            fcmode = SUPPORTING;
-            fcusername = srcPlayer->getCallSign();
-          } else if (fcword.back() == ':') {
+            mostrecentresponder->fcfeatures.clear();
             fcmode = PROXYSUPPORTING;
-            fcusername=fcword.substr(0,fcword.size()-1);
-          } else if (fcword == "Enabling:") {
-            fcmode = ENABLING;
-          } else if (fcword == "Disabling:") {
-            fcmode = DISABLING;
-          } else if (fcword == "Reset.") {
-            // pretend nothing happened
-            OutputDebugString("FIXME: Reset synchronization and features");
-            break;
-          } else if (fcword == "Error:") {
-            // From default case below, ignore.
-            break;
-          } else {
-            OutputDebugString("Feature: ");
-            OutputDebugString(fcword.c_str());
-            OutputDebugString("\n");
-            switch (fcmode) {
-              case SUPPORTING:
-              case PROXYSUPPORTING: {
-                // track fcusername's features
-                break;
-              }
-              case ENABLING:
-              case DISABLING: {
-                // toggle feature's internal boolean directly
-                break;
-              }
-              default: {
-                char messageBuffer[MessageLen];
-                strncpy(messageBuffer, "FairCheats: Error: Feature without preceding mode.", MessageLen);
-                nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
-                serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
-                errored = true;
-                // Send a Reset now?
-                break;
-              }
+            continue;
+          }
+
+          switch (fcmode) {
+            case PROXYSUPPORTING:
+            case SUPPORTING: {
+              // track mostrecentresponder's features
+              // separate words by spaces
+              OutputDebugString("SUPPORTING: ");
+              OutputDebugString(fcword.c_str());
+              OutputDebugString("\n");
+              if(!mostrecentresponder->fcfeatures.empty())
+                mostrecentresponder->fcfeatures.append(" ");
+              mostrecentresponder->fcfeatures.append(fcword);
+              OutputDebugString(mostrecentresponder->fcfeatures.c_str()); //print feature list for each word
+              OutputDebugString("\n");
+              continue;
+            }
+            case DISABLING:
+            case ENABLING: {
+              // toggle feature's internal boolean directly
+              continue;
+            }
+            default: { // case NONE:
+              char messageBuffer[MessageLen];
+              strncpy(messageBuffer, "FairCheats: Error: Feature without preceding mode.", MessageLen);
+              nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
+              serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
+              doneprocessing = true;
+              // Send a Reset now?
+              break;
             }
           }
         }

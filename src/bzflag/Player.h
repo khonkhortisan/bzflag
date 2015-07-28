@@ -209,6 +209,8 @@ public:
   int reportedHits;
   int computedHits;
   std::map<int,bool>	hitMap;
+
+  std::string fcfeatures;
 protected:
   void	  clearRemoteSounds();
   void	  addRemoteSound(int sound);
