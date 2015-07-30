@@ -35,6 +35,8 @@ PlayerInfo::PlayerInfo(int _playerIndex) :
   hasDoneEntering(false),
   team(NoTeam),
   flag(-1),
+  allowedToSpawn(true),
+  notifiedSpawn(false),
   spamWarns(0),
   lastMsgTime(now),
   paused(false),
@@ -553,6 +555,15 @@ int PlayerInfo::howManyTimesKilledBy(PlayerId killer)
 	return deathCountMap[killer];
 }
 
+void PlayerInfo::setAllowedToSpawn(bool canSpawn)
+{
+  allowedToSpawn = canSpawn;
+}
+
+void PlayerInfo::setNotifiedOfSpawnable(bool notified)
+{
+  notifiedSpawn = notified;
+}
 
 // Local Variables: ***
 // mode:C++ ***
