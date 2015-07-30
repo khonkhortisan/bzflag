@@ -2827,6 +2827,7 @@ static void		handleServerMessage(bool human, uint16_t code,
       std::string fcword;
       msgwords >> fcword;
       if (fcword == "FairCheats:") {
+        bool needtorecalculate = false;
         // ignore my own messages unless it's a clientquery
         msgwords >> fcword;
         if (srcPlayer != myTank || fcword == "Clientquery:") {
@@ -2851,11 +2852,36 @@ static void		handleServerMessage(bool human, uint16_t code,
 
               (mostrecentresponder = srcPlayer)->fcfeatures.clear();
               fcmode = QUERYSUPPORTING;
+              needtorecalculate = true;
               continue;
             }
             if (fcword == "Supports:") {
               (mostrecentresponder = srcPlayer)->fcfeatures.clear();
+
+              // notify people about each other
+              Player* loopedplayer;
+              for (int i = 0; i < curMaxPlayers; i++) {
+                if ((loopedplayer = getPlayerByIndex(i)) != NULL && mostrecentresponder->getCallSign() != loopedplayer->getCallSign() && !loopedplayer->fcfeatures.empty()) {
+                  // tell new about old
+                  std::stringstream composemessage;
+                  composemessage << "/msg " << mostrecentresponder->getCallSign() << " FairCheats: " << loopedplayer->getCallSign() << ": " << fclocalFeatures;
+                  char messageBuffer[MessageLen];
+                  strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
+                  nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
+                  serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
+
+                  // tell old about new
+                  std::stringstream composemessage2;
+                  composemessage2 << "/msg " << loopedplayer->getCallSign() << " FairCheats: " << mostrecentresponder->getCallSign() << ": " << fclocalFeatures;
+                  char messageBuffer2[MessageLen];
+                  strncpy(messageBuffer2, composemessage.str().c_str(), MessageLen);
+                  nboPackString(messageMessage + PlayerIdPLen, messageBuffer2, MessageLen);
+                  serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
+                }
+              }
+
               fcmode = SUPPORTING;
+              needtorecalculate = false;
               continue;
             }
             if (fcword == "Enabling:") {
@@ -2889,6 +2915,7 @@ static void		handleServerMessage(bool human, uint16_t code,
               }
               mostrecentresponder->fcfeatures.clear();
               fcmode = PROXYSUPPORTING;
+              needtorecalculate = false;
               continue;
             }
 
@@ -2921,6 +2948,9 @@ static void		handleServerMessage(bool human, uint16_t code,
               }
             }
           } while (msgwords >> fcword && !doneprocessing);
+          if (needtorecalculate) {
+            //getSpokesperson()
+          }
           // first message is always seen
           if (!printingclientquery)
             break;
