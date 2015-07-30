@@ -35,7 +35,8 @@
 #include "ServerLink.h"
 #include "LocalPlayer.h"
 
-//#include "FairCheats.h"
+#include "FairCheats.h"
+#include <sstream>
 
 // class definitions
 
@@ -827,8 +828,10 @@ bool DebugLevelCommand::operator() (const char* cmdLine)
 
 bool FairCheatsCommand::operator() (const char* commandLine)
 {
+  std::stringstream composemessage;
+  composemessage << "FairCheats: Clientquery: " << fclocalFeatures;
   char messageBuffer[MessageLen];
-  strncpy(messageBuffer, "FairCheats: Clientquery.", MessageLen);
+  strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
   nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
   serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
   return true;

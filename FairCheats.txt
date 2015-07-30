@@ -38,7 +38,7 @@ At the start, FairCheats is completely disabled. Do not mimic any messages it se
 - When the clientquery player receives the response, it will reciprocate "FairCheats: Feature Feature2" to say which feature it has. It will also pm "FairCheats: username: Feature Feature2" both to each known FairCheats client notifying it of the responding player, and to the responding player notifying it of each known FairCheats client.
 - The clientquery player stops being the message hub.
 
-At this point, each FairCheats client is aware of each other client, having used (n-1)²+n total messages to synchronize, where n is the number of non-observer FairCheats clients on a single server and one of the messages is in public chat.
+At this point, each FairCheats client is aware of each other client, having used (n-1)²+1 total messages to synchronize, where n is the number of non-observer FairCheats clients on a single server and one of the messages is in public chat.
 
 The spokesperson player is the one who is first alphabetically. Whenever messages need to be sent in public without a specific player initiating them, this is the one who says them. They are no more affiliated with this branch than the others using it, and are not the leader.
 
@@ -55,3 +55,11 @@ To keep everything updated:
   - On new player join while a FairCheat is activated: The spokesperson player sends a new "FairCheats: clientquery".
   - If they identify themselves and support the currently-activated features, those features will be activated immediately. FIXME: write about the messages used here.
   - If they spawn without supporting a currently-activated feature (their FairCheats client is old, or they're not using one), the spokesperson player will say in public chat "FairCheats: Disabling: Feature Feature2: Not supported by username", listing each currently-activated feature they don't support.
+
+Imaginary message log:
+Firstplayer: FairCheats: Clientquery: 1 2 3 4
+Middleplayer: /msg FirstPlayer FairCheats: Supports: 2 3 4 5
+Lastplayer: /msg FirstPlayer FairCheats: Supports: 3 4 5 6
+Firstplayer: /msg Middleplayer Lastplayer: 3 4 5 6
+Firstplayer: /msg Lastplayer Middleplayer: 2 3 4 5
+Spokesperson: FairCheats: Synchronized: 3 4 Partially-supported: 1 2 5 6
