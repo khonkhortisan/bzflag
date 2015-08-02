@@ -2826,19 +2826,38 @@ static void		handleServerMessage(bool human, uint16_t code,
       std::stringstream msgwords((const char*) msg);
       std::string fcword;
       msgwords >> fcword;
+        OutputDebugString("Message from: ");
+		OutputDebugString(srcPlayer->getCallSign());
+		//OutputDebugString("to ");
+		//OutputDebugString(dstPlayer->getCallSign());
+		OutputDebugString("\n");
+		//OutputDebugString(": ");
+        OutputDebugString((const char*) msg);
+        OutputDebugString("\n");
       if (fcword == "FairCheats:") {
         bool needtorecalculate = false;
         // ignore my own messages unless it's a clientquery
         msgwords >> fcword;
         if (srcPlayer != myTank || fcword == "Clientquery:") {
-          bool printingclientquery = false;
+          bool disallowprintingthismessage = false;
           Player* mostrecentresponder;
           enum fcnextwordprocessmode { NONE, QUERYSUPPORTING, SUPPORTING, PROXYSUPPORTING, ENABLING, DISABLING } fcmode;
           bool doneprocessing = false;
           do { // foreach word in message
-            if (fcword == "Clientquery:") {
-              printingclientquery = true;
-              if (srcPlayer == myTank) {
+            if (fcword == "Clientquery:" || fcword == "Reset.") {
+              { //Reset what I've heard about other players
+                // pretend nothing happened
+                Player* loopedplayer;
+                for (int i = 0; i < curMaxPlayers; i++) {
+                  if ((loopedplayer = getPlayerByIndex(i)) != NULL && loopedplayer->getCallSign() != myTank->getCallSign()) {
+                    loopedplayer->fcfeatures.clear();
+                  }
+                }
+                OutputDebugString("FIXME: Disable features");
+                //break;
+              }
+              // keep going if someone else's clientquery
+              if (fcword == "Reset." || srcPlayer == myTank) {
                 break;
               }
 
@@ -2856,12 +2875,17 @@ static void		handleServerMessage(bool human, uint16_t code,
               continue;
             }
             if (fcword == "Supports:") {
+              disallowprintingthismessage = true;
               (mostrecentresponder = srcPlayer)->fcfeatures.clear();
 
               // notify people about each other
               Player* loopedplayer;
               for (int i = 0; i < curMaxPlayers; i++) {
-                if ((loopedplayer = getPlayerByIndex(i)) != NULL && mostrecentresponder->getCallSign() != loopedplayer->getCallSign() && !loopedplayer->fcfeatures.empty()) {
+                if ((loopedplayer = getPlayerByIndex(i)) != NULL // real player
+                 &&  loopedplayer->getCallSign() != myTank->getCallSign() // "I got me!" (drascula)
+                 && !loopedplayer->fcfeatures.empty() // with this client (already told me)
+                 &&  loopedplayer->getCallSign() != mostrecentresponder->getCallSign()) // To know thyself one needn't get stuck looping
+                {
                   // tell new about old
                   std::stringstream composemessage;
                   composemessage << "/msg " << mostrecentresponder->getCallSign() << " FairCheats: " << loopedplayer->getCallSign() << ": " << fclocalFeatures;
@@ -2881,7 +2905,11 @@ static void		handleServerMessage(bool human, uint16_t code,
               }
 
               fcmode = SUPPORTING;
-              needtorecalculate = false;
+              needtorecalculate = true;
+              continue;
+            }
+            if (fcword == "Synchronized.") {
+              // don't error
               continue;
             }
             if (fcword == "Enabling:") {
@@ -2892,16 +2920,12 @@ static void		handleServerMessage(bool human, uint16_t code,
               fcmode = DISABLING;
               continue;
             }
-            if (fcword == "Reset.") {
-              // pretend nothing happened
-              OutputDebugString("FIXME: Reset synchronization and features");
-              break;
-            }
             if (fcword == "Error:") {
               // to still allow "FairCheats: " prefix
               break;
             }
             if (fcword.back() == ':') {
+              disallowprintingthismessage = true;
               mostrecentresponder=getPlayerByName(fcword.substr(0,fcword.size()-1).c_str());
               // notausername: crash
               if (mostrecentresponder == NULL) { // && (wasPM || amSpokesperson()) // to remove mass duplicate spam at sender
@@ -2915,7 +2939,7 @@ static void		handleServerMessage(bool human, uint16_t code,
               }
               mostrecentresponder->fcfeatures.clear();
               fcmode = PROXYSUPPORTING;
-              needtorecalculate = false;
+              needtorecalculate = true;
               continue;
             }
 
@@ -2949,10 +2973,39 @@ static void		handleServerMessage(bool human, uint16_t code,
             }
           } while (msgwords >> fcword && !doneprocessing);
           if (needtorecalculate) {
-            //getSpokesperson()
+            // isSynchronized()
+            {
+              bool synchronized = true; // unless false
+              Player* spokesperson = myTank; // unless someone else
+              Player* loopedplayer;
+              for (int i = 0; i < curMaxPlayers; i++) {
+                if ((loopedplayer = getPlayerByIndex(i)) != NULL && loopedplayer->getCallSign() != myTank->getCallSign()) {
+                  if (loopedplayer->fcfeatures.empty()) {
+                      synchronized = false;
+                      break;
+                  }
+                  // getSpokesperson()
+                  // She who is first alphabetically speaks for the group
+                  if (std::string(loopedplayer->getCallSign()) < std::string(spokesperson->getCallSign())) {
+                    spokesperson = loopedplayer;
+                    // don't care about spokesperson if it's not me
+                    break;
+                  }
+                }
+              }
+              if (synchronized && spokesperson->getCallSign() == myTank->getCallSign()) {
+                std::stringstream composemessage;
+                composemessage << "FairCheats: Synchronized.";
+                char messageBuffer[MessageLen];
+                strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
+                nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
+                serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
+              }
+            }
+
           }
           // first message is always seen
-          if (!printingclientquery)
+          if (disallowprintingthismessage)
             break;
         }
       }
