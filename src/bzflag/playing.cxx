@@ -2823,86 +2823,67 @@ static void		handleServerMessage(bool human, uint16_t code,
 
       std::string text = BundleMgr::getCurrentBundle()->getLocalString(origText);
 
+      /* FairCheats */
+      // He who sent a message, even if passed through someone else
+      Player* originalmessagesender = srcPlayer;
       std::stringstream msgwords((const char*) msg);
       std::string fcword;
+      //get first word in message
       msgwords >> fcword;
-        OutputDebugString("Message from: ");
-		OutputDebugString(srcPlayer->getCallSign());
-		//OutputDebugString("to ");
-		//OutputDebugString(dstPlayer->getCallSign());
-		OutputDebugString("\n");
-		//OutputDebugString(": ");
-        OutputDebugString((const char*) msg);
-        OutputDebugString("\n");
+      OutputDebugString(originalmessagesender->getCallSign());
+      OutputDebugString(" sends ");
+      //OutputDebugString("to ");
+      //OutputDebugString(dstPlayer->getCallSign());
+      OutputDebugString((const char*) msg);
+      OutputDebugString("\n");
+
+      //Does it have anytihng to do with this?
       if (fcword == "FairCheats:") {
+        // check whether it's still synchronized?
         bool needtorecalculate = false;
-        // ignore my own messages unless it's a clientquery
+        //get second word
         msgwords >> fcword;
-        if (srcPlayer != myTank || fcword == "Clientquery:") {
+        // ignore my own messages unless it's a clientquery
+        if (originalmessagesender->getCallSign() != myTank->getCallSign() || fcword == "Clientquery:") {
+          // which messages am I printing? Just clientquery?
           bool disallowprintingthismessage = false;
-          Player* mostrecentresponder;
           enum fcnextwordprocessmode { NONE, QUERYSUPPORTING, SUPPORTING, PROXYSUPPORTING, ENABLING, DISABLING } fcmode;
-          bool doneprocessing = false;
           do { // foreach word in message
+            OutputDebugString("do word is ");
+            OutputDebugString(fcword.c_str());
+            OutputDebugString("\n");
             if (fcword == "Clientquery:" || fcword == "Reset.") {
-              { //Reset what I've heard about other players
-                // pretend nothing happened
-                Player* loopedplayer;
-                for (int i = 0; i < curMaxPlayers; i++) {
-                  if ((loopedplayer = getPlayerByIndex(i)) != NULL && loopedplayer->getCallSign() != myTank->getCallSign()) {
-                    loopedplayer->fcfeatures.clear();
-                  }
+              // Reset is before the first phase.
+              // Clientquery: feature is this first phase.
+              // Supports: feature is the second phase.
+              //Reset what I've heard about other players
+              // pretend nothing happened
+              Player* loopedplayer;
+              for (int i = 0; i < curMaxPlayers; i++) {
+                if ((loopedplayer = getPlayerByIndex(i)) != NULL && loopedplayer->getCallSign() != myTank->getCallSign()) {
+                  loopedplayer->fcfeatures.clear();
                 }
-                OutputDebugString("FIXME: Disable features");
-                //break;
               }
+              OutputDebugString("FIXME: Disable features\n");
+              //break;
+
               // keep going if someone else's clientquery
-              if (fcword == "Reset." || srcPlayer == myTank) {
+              if (fcword == "Reset." || originalmessagesender->getCallSign() == myTank->getCallSign()) {
                 break;
               }
 
-              // Should process the feature list before responding? Nah.
-              std::stringstream composemessage;
-              composemessage << "/msg " << srcPlayer->getCallSign() << " FairCheats: Supports: " << fclocalFeatures;
-              char messageBuffer[MessageLen];
-              strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
-              nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
-              serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
-
-              (mostrecentresponder = srcPlayer)->fcfeatures.clear();
               fcmode = QUERYSUPPORTING;
               needtorecalculate = true;
               continue;
             }
             if (fcword == "Supports:") {
+              // Supports: feature is this second phase
+              // username: feature is the third phase
               disallowprintingthismessage = true;
-              (mostrecentresponder = srcPlayer)->fcfeatures.clear();
-
-              // notify people about each other
-              Player* loopedplayer;
-              for (int i = 0; i < curMaxPlayers; i++) {
-                if ((loopedplayer = getPlayerByIndex(i)) != NULL // real player
-                 &&  loopedplayer->getCallSign() != myTank->getCallSign() // "I got me!" (drascula)
-                 && !loopedplayer->fcfeatures.empty() // with this client (already told me)
-                 &&  loopedplayer->getCallSign() != mostrecentresponder->getCallSign()) // To know thyself one needn't get stuck looping
-                {
-                  // tell new about old
-                  std::stringstream composemessage;
-                  composemessage << "/msg " << mostrecentresponder->getCallSign() << " FairCheats: " << loopedplayer->getCallSign() << ": " << fclocalFeatures;
-                  char messageBuffer[MessageLen];
-                  strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
-                  nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
-                  serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
-
-                  // tell old about new
-                  std::stringstream composemessage2;
-                  composemessage2 << "/msg " << loopedplayer->getCallSign() << " FairCheats: " << mostrecentresponder->getCallSign() << ": " << fclocalFeatures;
-                  char messageBuffer2[MessageLen];
-                  strncpy(messageBuffer2, composemessage.str().c_str(), MessageLen);
-                  nboPackString(messageMessage + PlayerIdPLen, messageBuffer2, MessageLen);
-                  serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
-                }
-              }
+              originalmessagesender->fcfeatures.clear();
+              OutputDebugString("Supports player is");
+              OutputDebugString(originalmessagesender->getCallSign());
+              OutputDebugString("\n");
 
               fcmode = SUPPORTING;
               needtorecalculate = true;
@@ -2925,33 +2906,41 @@ static void		handleServerMessage(bool human, uint16_t code,
               break;
             }
             if (fcword.back() == ':') {
+              // username: feature is this third phase.
+              // Synchronized. is the fourth phase.
               disallowprintingthismessage = true;
-              mostrecentresponder=getPlayerByName(fcword.substr(0,fcword.size()-1).c_str());
+              originalmessagesender=getPlayerByName(fcword.substr(0,fcword.size()-1).c_str());
               // notausername: crash
-              if (mostrecentresponder == NULL) { // && (wasPM || amSpokesperson()) // to remove mass duplicate spam at sender
+              if (originalmessagesender == NULL) { // && (wasPM || amSpokesperson()) // to remove mass duplicate spam at sender
                 std::stringstream composemessage;
                 composemessage << "FairCheats: Error: " << fcword.substr(0,fcword.size()-1).c_str() << " is not a valid name for a current player.";
+                OutputDebugString("Sending ");
+                OutputDebugString(composemessage.str().c_str());
+                OutputDebugString("\n");
                 char messageBuffer[MessageLen];
                 strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
                 nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
                 serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
                 break;
               }
-              mostrecentresponder->fcfeatures.clear();
+              originalmessagesender->fcfeatures.clear();
               fcmode = PROXYSUPPORTING;
               needtorecalculate = true;
               continue;
             }
 
+            // Process each non-mode-changing (that is, feature) word
+            // of incoming message
+            bool breakthisloop = false;
             switch (fcmode) {
               case QUERYSUPPORTING:
               case SUPPORTING:
               case PROXYSUPPORTING: {
-                // track mostrecentresponder's features
+                // track originalmessagesender's features
                 // separate words by spaces
-                if(!mostrecentresponder->fcfeatures.empty())
-                  mostrecentresponder->fcfeatures.append(" ");
-                mostrecentresponder->fcfeatures.append(fcword);
+                if(!originalmessagesender->fcfeatures.empty())
+                  originalmessagesender->fcfeatures.append(" ");
+                originalmessagesender->fcfeatures.append(fcword);
                 continue;
               }
               case DISABLING:
@@ -2966,12 +2955,71 @@ static void		handleServerMessage(bool human, uint16_t code,
                 strncpy(messageBuffer, "FairCheats: Error: Feature without preceding mode.", MessageLen);
                 nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
                 serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
-                doneprocessing = true;
+                breakthisloop = true;
                 // Send a Reset now?
                 break;
               }
             }
-          } while (msgwords >> fcword && !doneprocessing);
+            if (breakthisloop)
+              break;
+          } while (msgwords >> fcword);
+          // Send response messages after processing incoming
+          switch (fcmode) {
+            case QUERYSUPPORTING: {
+              // Clientquery: feature is the first phase.
+              // Supports: feature is this second phase.
+              std::stringstream composemessage;
+              composemessage << "/msg " << originalmessagesender->getCallSign() << " FairCheats: Supports: " << fclocalFeatures;
+              OutputDebugString("Sending ");
+              OutputDebugString(composemessage.str().c_str());
+              OutputDebugString("\n");
+              char messageBuffer[MessageLen];
+              strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
+              nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
+              serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
+              break;
+            }
+            case SUPPORTING: {
+              // Supports: feature is the second phase.
+              // username: feature is this third phase.
+              // notify people about each other
+              Player* loopedplayer;
+              for (int i = 0; i < curMaxPlayers; i++) {
+                if ((loopedplayer = getPlayerByIndex(i)) != NULL // real player
+                 &&  loopedplayer->getCallSign() != myTank->getCallSign() // "I got me!" (drascula)
+                 && !loopedplayer->fcfeatures.empty() // with this client (already told me)
+                 &&  loopedplayer->getCallSign() != originalmessagesender->getCallSign()) // To know thyself one needn't get stuck looping
+                {
+                  OutputDebugString("loopedplayer is ");
+                  OutputDebugString(loopedplayer->getCallSign());
+                  OutputDebugString("\n");
+                  // tell new about old
+                  std::stringstream composemessage;
+                  composemessage << "/msg " << originalmessagesender->getCallSign() << " FairCheats: " << loopedplayer->getCallSign() << ": " << fclocalFeatures;
+                  OutputDebugString("Sending ");
+                  OutputDebugString(composemessage.str().c_str());
+                  OutputDebugString("\n");
+                  char messageBuffer[MessageLen];
+                  strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
+                  nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
+                  serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
+
+                  // tell old about new
+                  std::stringstream composemessage2;
+                  composemessage2 << "/msg " << loopedplayer->getCallSign() << " FairCheats: " << originalmessagesender->getCallSign() << ": " << fclocalFeatures;
+                  OutputDebugString("Sending ");
+                  OutputDebugString(composemessage2.str().c_str());
+                  OutputDebugString("\n");
+                  char messageBuffer2[MessageLen];
+                  strncpy(messageBuffer2, composemessage2.str().c_str(), MessageLen);
+                  nboPackString(messageMessage + PlayerIdPLen, messageBuffer2, MessageLen);
+                  serverLink->send(MsgMessage, sizeof(messageMessage), messageMessage);
+                }
+              }
+            }
+          }
+
+          // Check if synchronized
           if (needtorecalculate) {
             // isSynchronized()
             {
@@ -2996,6 +3044,9 @@ static void		handleServerMessage(bool human, uint16_t code,
               if (synchronized && spokesperson->getCallSign() == myTank->getCallSign()) {
                 std::stringstream composemessage;
                 composemessage << "FairCheats: Synchronized.";
+				OutputDebugString("Sending ");
+			  OutputDebugString(composemessage.str().c_str());
+			  OutputDebugString("\n");
                 char messageBuffer[MessageLen];
                 strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
                 nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
@@ -3008,7 +3059,7 @@ static void		handleServerMessage(bool human, uint16_t code,
           if (disallowprintingthismessage)
             break;
         }
-      }
+      } /* FairCheats */
 
       if (toAll || toAdmin || srcPlayer == myTank  || dstPlayer == myTank ||
 	  dstTeam == myTank->getTeam()) {

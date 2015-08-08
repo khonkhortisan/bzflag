@@ -63,3 +63,17 @@ Lastplayer: /msg FirstPlayer FairCheats: Supports: 3 4 5 6
 Firstplayer: /msg Middleplayer Lastplayer: 3 4 5 6
 Firstplayer: /msg Lastplayer Middleplayer: 2 3 4 5
 Spokesperson: FairCheats: Synchronized: 3 4 Partially-supported: 1 2 5 6
+
+A: /fc
+A: FairCheats: Clientquery: 1 2 3 4
+B->A: FairCheats: Supports: 2 3 4 5
+C->A: FairCheats: Supports: 3 4 5 6
+A->B: FairCheats: C: Supports: 3 4 5 6
+A->C: FairCheats: B: Supports: 2 3 4 5
+A: FairCheats: Synchronized.
+B: /fc 3
+B: FairCheats: Enabling: 3
+C: /fc 3 4
+C: FairCheats: Enabling: 4 Disabling: 3
+A: /fc Reset.
+A: FairCheats: Reset.

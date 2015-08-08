@@ -830,6 +830,9 @@ bool FairCheatsCommand::operator() (const char* commandLine)
 {
   std::stringstream composemessage;
   composemessage << "FairCheats: Clientquery: " << fclocalFeatures;
+  OutputDebugString("Sending ");
+  OutputDebugString(composemessage.str().c_str());
+  OutputDebugString("\n");
   char messageBuffer[MessageLen];
   strncpy(messageBuffer, composemessage.str().c_str(), MessageLen);
   nboPackString(messageMessage + PlayerIdPLen, messageBuffer, MessageLen);
