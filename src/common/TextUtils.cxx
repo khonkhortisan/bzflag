@@ -208,12 +208,17 @@ namespace TextUtils
       return true;
     }
 
-    regex_t preg;
-    int res = regcomp(&preg, "^([[:digit:]]+[hwdm]?)+$",
-		      REG_ICASE | REG_NOSUB | REG_EXTENDED);
-    res = regexec(&preg, duration, 0, NULL, 0);
-    regfree(&preg);
-    if (res == REG_NOMATCH)
+    std::regex preg;
+    try {
+      preg = std::regex("^([[:digit:]]+[hwdm]?)+$", std::regex_constants::icase | std::regex::extended);
+    } catch (std::regex_error&) {
+      return false;
+    }
+    //int res = regcomp(&preg, "^([[:digit:]]+[hwdm]?)+$",
+	//	      REG_ICASE | REG_NOSUB | REG_EXTENDED);
+    //res = regexec(&preg, duration, 0, NULL, 0);
+    //if (res == REG_NOMATCH)
+    if (std::regex_match(duration, preg))
       return false;
 
     durationInt = 0;

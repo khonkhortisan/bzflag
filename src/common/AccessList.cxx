@@ -191,21 +191,22 @@ bool AccessList::authorized(const std::vector<std::string>& strings) const
       }
     } else {
       // regular expression
-      regex_t re;
-      if (regcomp(&re, p.pattern.c_str(), REG_EXTENDED | REG_ICASE) != 0) {
-	continue;
+      std::regex re;
+      try {
+        re = std::regex(p.pattern.c_str(), std::regex::extended | std::regex_constants::icase);
+      } catch (std::regex_error&) {
+        continue;
       }
-      for (unsigned int s = 0; s < strings.size(); s++) {
-	if (regexec(&re, strings[s].c_str(), 0, NULL, 0) == 0) {
-	  if (p.type == allow_regex) {
-	    return true;
-	  }
-	  else if (p.type == deny_regex) {
-	    return false;
-	  }
-	}
-      }
-      regfree(&re);
+	 for (unsigned int s = 0; s < strings.size(); s++) {
+		if (std::regex_match(strings[s], re)) {
+			 if (p.type == allow_regex) {
+				 return true;
+			 }
+			 else if (p.type == deny_regex) {
+				 return false;
+			 }
+		 }
+	 }
     }
   }
 

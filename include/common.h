@@ -305,7 +305,7 @@ typedef unsigned char	uint8_t;
 #endif /* HAVE_STD_MIN */
 
 #if defined(HAVE_REGEX_H)
-#  include <regex.h>
+#  include <regex>
 #else
 #  define regex_t void
 #endif  /* HAVE_REGEX_H */
