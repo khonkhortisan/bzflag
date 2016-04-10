@@ -262,34 +262,6 @@ typedef unsigned char	uint8_t;
 #define countof(__x)   (sizeof(__x) / sizeof(__x[0]))
 
 
-#ifdef HAVE_STD__ISNAN
-#  ifdef isnan
-#    undef isnan
-#  endif
-#  define isnan std::isnan
-#elif defined(HAVE__ISNAN)
-#  ifdef isnan
-#    undef isnan
-#  endif
-#  define isnan _isnan
-#else
-#  ifndef HAVE_ISNAN
-#    ifdef __cplusplus
-#      ifdef isnan
-#	undef isnan
-#      endif
-       template<typename Tp>
-       inline int isnan(Tp f)
-       {
-	 return (f!=f);
-       }
-#    else
-#      define isnan(f) ((f) != (f))
-#    endif /* __cplusplus */
-#  endif /* HAVE_ISNAN */
-#endif /* HAVE_STD__ISNAN */
-
-
 #ifndef HAVE_STD__MAX
 #  ifdef __cplusplus
 #    ifdef max
